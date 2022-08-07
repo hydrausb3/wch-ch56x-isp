@@ -424,6 +424,35 @@ cmd_read_conf(u16 cfgmask, size_t len, u8 *cfg)
 	return len;
 }
 
+static u8
+cmd_enable_debug_mode()
+{
+	u8 req[] = {
+		0x07, 0x00,
+		0x11, 0xbf, 0xf9, 0xf7,
+		0x13, 0xbf, 0xf9, 0xec,
+		0xe5,
+		0xf2,
+		0xff, 0x8f
+	};
+	u8 buf[6];
+	size_t got;
+
+#ifdef DEBUG
+	printf("cmd_enable_debug_mode isp_send_cmd()\n");
+#endif
+
+	isp_send_cmd(CMD_WRITE_CONFIG, sizeof(req), req);
+	got = usb_recv(sizeof(buf), buf);
+	if (got != 6)
+		die("enable debug command: wrong response length\n");
+
+#ifdef DEBUG
+	print_hex(buf, 6);
+#endif
+	return buf[4] == 0; // success if this byte is zero
+}
+
 static u32 read_btver(void)
 {
 	u8 buf[4];
@@ -474,7 +503,7 @@ usb_fini(void)
 	if(flash_file_fp)
 		fclose(flash_file_fp);
 	if(flash_file_bin)
-		free(flash_file_bin);	
+		free(flash_file_bin);
 	if (dev)
 		err = libusb_release_interface(dev, 0);
 	if (err)
@@ -755,6 +784,7 @@ usage(void)
 {
 	printf("usage: %s [-Vprvc] COMMAND [ARG ...]\n", argv0);
 	printf("       %s [-Vprvc] flash FILE\n", argv0);
+	printf("       %s debug\n", argv0);
 	die("");
 }
 
@@ -805,6 +835,17 @@ main(int argc, char *argv[])
 		if (argc < 2)
 			die("flash: missing file\n");
 		flash_file(argv[1]);
+	}
+
+	if (strcmp(argv[0], "debug") == 0) {
+		if (dev_id != 0x69)
+			die("This feature is currently only available for the CH569!");
+
+		if (cmd_enable_debug_mode()) {
+			printf("successfully enabled debug mode.\n");
+		} else {
+			printf("failed to enable debug mode.\n");
+		}
 	}
 
 	isp_fini();
