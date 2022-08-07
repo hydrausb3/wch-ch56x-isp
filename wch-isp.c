@@ -55,20 +55,20 @@ typedef uint32_t u32;
 #define CFG_MASK_UID 0x10 /* Device Unique ID */
 #define CFG_MASK_ALL 0x1f /* All mask bits of CFGs */
 
-#define CMD_IDENTIFY	0xa1
-#define CMD_ISP_END	0xa2
-#define CMD_ISP_KEY	0xa3
-#define CMD_ERASE	0xa4
-#define CMD_PROGRAM	0xa5
-#define CMD_VERIFY	0xa6
-#define CMD_READ_CONFIG	0xa7
+#define CMD_IDENTIFY	    0xa1
+#define CMD_ISP_END	        0xa2
+#define CMD_ISP_KEY	        0xa3
+#define CMD_ERASE	        0xa4
+#define CMD_PROGRAM	        0xa5
+#define CMD_VERIFY	        0xa6
+#define CMD_READ_CONFIG	    0xa7
 #define CMD_WRITE_CONFIG	0xa8
-#define CMD_DATA_ERASE	0xa9
+#define CMD_DATA_ERASE	    0xa9
 #define CMD_DATA_PROGRAM	0xaa
-#define CMD_DATA_READ	0xab
-#define CMD_WRITE_OTP	0xc3
-#define CMD_READ_OTP	0xc4
-#define CMD_SET_BAUD	0xc5
+#define CMD_DATA_READ	    0xab
+#define CMD_WRITE_OTP	    0xc3
+#define CMD_READ_OTP	    0xc4
+#define CMD_SET_BAUD	    0xc5
 
 #define BTVER_2_7 (0x00020700)
 
