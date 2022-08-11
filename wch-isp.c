@@ -795,6 +795,11 @@ usage(void)
 {
 	printf("usage: %s [-Vprvc] COMMAND [ARG ...]\n", argv0);
 	printf("       %s [-Vprvc] flash|debug-on|debug-off FILE\n", argv0);
+	printf("-V means print version\n");
+	printf("-p means display progress\n");
+	printf("-r means do reset at end\n");
+	printf("-v means do verify after erase/program\n");
+	printf("-c means print CH569 config(after isp_init and before isp_fini)\n");
 	die("");
 }
 
