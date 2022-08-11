@@ -424,10 +424,9 @@ cmd_read_conf(u16 cfgmask, size_t len, u8 *cfg)
 	return len;
 }
 
-static u8
-cmd_enable_debug_mode()
+u8 cmd_debug_mode(u8 enable)
 {
-	u8 req[] = {
+	u8 enable_debug_req[] = {
 		0x07, 0x00,
 		0x11, 0xbf, 0xf9, 0xf7,
 		0x13, 0xbf, 0xf9, 0xec,
@@ -435,6 +434,16 @@ cmd_enable_debug_mode()
 		0xf2,
 		0xff, 0x8f
 	};
+
+	u8 disable_debug_req[] = {
+	    0x07, 0x00,
+        0x11, 0xbf, 0xf9, 0xf7,
+        0x13, 0xbf, 0xf9, 0xec,
+        0x45,
+        0xf2,
+        0xff, 0x8f
+	};
+
 	u8 buf[6];
 	size_t got;
 
@@ -442,7 +451,9 @@ cmd_enable_debug_mode()
 	printf("cmd_enable_debug_mode isp_send_cmd()\n");
 #endif
 
-	isp_send_cmd(CMD_WRITE_CONFIG, sizeof(req), req);
+	u8 *req = enable ? enable_debug_req : disable_debug_req;
+
+	isp_send_cmd(CMD_WRITE_CONFIG, sizeof(enable_debug_req), req);
 	got = usb_recv(sizeof(buf), buf);
 	if (got != 6)
 		die("enable debug command: wrong response length\n");
@@ -784,7 +795,6 @@ usage(void)
 {
 	printf("usage: %s [-Vprvc] COMMAND [ARG ...]\n", argv0);
 	printf("       %s [-Vprvc] flash FILE\n", argv0);
-	printf("       %s debug\n", argv0);
 	die("");
 }
 
@@ -841,12 +851,24 @@ main(int argc, char *argv[])
 		if (dev_id != 0x69)
 			die("This feature is currently only available for the CH569!");
 
-		if (cmd_enable_debug_mode()) {
+		if (cmd_debug_mode(1)) {
 			printf("successfully enabled debug mode.\n");
 		} else {
 			printf("failed to enable debug mode.\n");
 		}
 	}
+
+	if (strcmp(argv[0], "disabledebug") == 0) {
+		if (dev_id != 0x69)
+			die("This feature is currently only available for the CH569!");
+
+		if (cmd_debug_mode(0)) {
+			printf("successfully disabled debug mode.\n");
+		} else {
+			printf("failed to disable debug mode.\n");
+		}
+	}
+
 
 	isp_fini();
 	usb_fini();
