@@ -794,7 +794,7 @@ static void
 usage(void)
 {
 	printf("usage: %s [-Vprvc] COMMAND [ARG ...]\n", argv0);
-	printf("       %s [-Vprvc] flash FILE\n", argv0);
+	printf("       %s [-Vprvc] flash|debug-on|debug-off FILE\n", argv0);
 	die("");
 }
 
@@ -847,7 +847,7 @@ main(int argc, char *argv[])
 		flash_file(argv[1]);
 	}
 
-	if (strcmp(argv[0], "debug") == 0) {
+	if (strcmp(argv[0], "debug-on") == 0) {
 		if (dev_id != 0x69)
 			die("This feature is currently only available for the CH569!");
 
@@ -858,7 +858,7 @@ main(int argc, char *argv[])
 		}
 	}
 
-	if (strcmp(argv[0], "disabledebug") == 0) {
+	if (strcmp(argv[0], "debug-off") == 0) {
 		if (dev_id != 0x69)
 			die("This feature is currently only available for the CH569!");
 
@@ -869,6 +869,8 @@ main(int argc, char *argv[])
 		}
 	}
 
+	if (do_show_config)
+		config_show();
 
 	isp_fini();
 	usb_fini();
