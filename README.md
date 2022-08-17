@@ -36,7 +36,7 @@ With the new version v0.2.0 there is new commands `flash32k`, `flash64k` and `fl
   - It shall be used for any code which does not exceed 64KB to run with maximum performances
 - flash96k will change the RAMX maximum usable size to 32KB and ROM(flash code running in 0 wait sate) to 96KB
   - It shall be used for any code which does not exceed 96KB to run with maximum performances
-Those new command shall be used only to change the RAMX/Flash size ratio after any change the binary shall be flashed with flash command
+One of those new commands shall be used only to change the RAMX/ROM(Flash code) size ratio after any change (old binary previously flashed will not run correctly so it is mandatory to flash it again) the binary shall be flashed with flash command
 
 ### CH569 Debug mode
 * If the CH569 config `debug` mode is `on/enabled` it is impossible to flash a program with `wch-isp` and it will return error "Fail to program chunk @ 0 error: e0 00" (the booloader refuse to flash anything when debug mode is `on/enabled`).
