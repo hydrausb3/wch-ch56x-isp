@@ -28,6 +28,16 @@ This utility has only be tested on the CH32V103 & CH569W but should work on othe
   - #### Windows
     - wch-isp.exe -vr flash fullpath/file.bin
 
+### CH569 Flash RAMX/ROM size
+With the new version v0.2.0 there is new commands `flash32k`, `flash64k` and `flash96k`
+- flash32k will change the RAMX maximum usable size to 96KB and ROM(flash code running in 0 wait sate) to 32KB
+  - It shall be used for any code which does not exceed 32KB to run with maximum performances
+- flash64k will change the RAMX maximum usable size to 64KB and ROM(flash code running in 0 wait sate) to 64KB
+  - It shall be used for any code which does not exceed 64KB to run with maximum performances
+- flash96k will change the RAMX maximum usable size to 32KB and ROM(flash code running in 0 wait sate) to 96KB
+  - It shall be used for any code which does not exceed 96KB to run with maximum performances
+Those new command shall be used only to change the RAMX/Flash size ratio after any change the binary shall be flashed with flash command
+
 ### CH569 Debug mode
 * If the CH569 config `debug` mode is `on/enabled` it is impossible to flash a program with `wch-isp` and it will return error "Fail to program chunk @ 0 error: e0 00" (the booloader refuse to flash anything when debug mode is `on/enabled`).
 * To check the CH569 config `debug` mode, launch `wch-isp -c` and it will display the config of the CH569 including debug state (`DEBUG_EN` `1: enabled` or `0: disabled`)
