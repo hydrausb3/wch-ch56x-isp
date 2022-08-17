@@ -39,7 +39,7 @@ With the new version v0.2.0 there is new commands `flash32k`, `flash64k` and `fl
 
 One of those new commands shall be used only to change the RAMX/ROM(Flash code) size ratio.
 
-Warning: After any change to RAMX/ROM size old binary previously flashed will not run correctly, so it is mandatory to flash the program again with a binary by using `flash` command like in example [`How to use wch-isp`](https://github.com/hydrausb3/wch-isp/edit/master/README.md#how-to-use-wch-isp)
+Warning: After any change to RAMX/ROM size old binary previously flashed will not run correctly, so it is mandatory to flash the program again with a binary by using `flash` command like in example [`How to use wch-isp`](https://github.com/hydrausb3/wch-isp#how-to-use-wch-isp)
 
 ### CH569 Debug mode
 * If the CH569 config `debug` mode is `on/enabled` it is impossible to flash a program with `wch-isp` and it will return error "Fail to program chunk @ 0 error: e0 00" (the booloader refuse to flash anything when debug mode is `on/enabled`).
