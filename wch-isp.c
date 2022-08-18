@@ -426,37 +426,27 @@ cmd_read_conf(u16 cfgmask, size_t len, u8 *cfg)
 
 u8 cmd_debug_mode(u8 enable)
 {
-	u8 enable_debug_req[] = {
-		0x07, 0x00,
-		0x11, 0xbf, 0xf9, 0xf7,
-		0x13, 0xbf, 0xf9, 0xec,
-		0xe5,
-		0xf2,
-		0xff, 0x8f
-	};
+	u8 req[] = { 0x1f, 0x00 };
+	const u8 enable_debug_req  = 0xe5;
+	const u8 disable_debug_req = 0x45;
 
-	u8 disable_debug_req[] = {
-	    0x07, 0x00,
-        0x11, 0xbf, 0xf9, 0xf7,
-        0x13, 0xbf, 0xf9, 0xec,
-        0x45,
-        0xf2,
-        0xff, 0x8f
-	};
-
-	u8 buf[6];
+	u8 buf[60];
 	size_t got;
 
 #ifdef DEBUG
 	printf("cmd_enable_debug_mode isp_send_cmd()\n");
 #endif
+	isp_send_cmd(CMD_READ_CONFIG, sizeof(req), req);
+	got = isp_recv_cmd(CMD_READ_CONFIG, sizeof(buf), buf);
+	if (got < 2)
+		die("read conf fail: not received enough bytes\n");
 
-	u8 *req = enable ? enable_debug_req : disable_debug_req;
+	buf[10] = enable ? enable_debug_req : disable_debug_req;
 
-	isp_send_cmd(CMD_WRITE_CONFIG, sizeof(enable_debug_req), req);
-	got = usb_recv(sizeof(buf), buf);
+	isp_send_cmd(CMD_WRITE_CONFIG, 14, buf);
+	got = usb_recv(6, buf);
 	if (got != 6)
-		die("enable debug command: wrong response length\n");
+		die("send config command: wrong response length\n");
 
 #ifdef DEBUG
 	print_hex(buf, 6);
