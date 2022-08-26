@@ -873,8 +873,8 @@ main(int argc, char *argv[])
 			die("flash: missing file\n");
 		flash_file(argv[1]);
 	} else if (strcmp(argv[0], "debug-on") == 0) {
-		if (dev_id != 0x69)
-			die("This feature is currently only available for the CH569!");
+		if (!((dev_id == 0x69) || (dev_id == 0x65)))
+			die("This feature is currently only available for the CH565/CH569!");
 
 		if (cmd_debug_mode(1)) {
 			printf("successfully enabled debug mode.\n");
@@ -882,8 +882,8 @@ main(int argc, char *argv[])
 			printf("failed to enable debug mode.\n");
 		}
 	} else if (strcmp(argv[0], "debug-off") == 0) {
-		if (dev_id != 0x69)
-			die("This feature is currently only available for the CH569!");
+		if (!((dev_id == 0x69) || (dev_id == 0x65)))
+			die("This feature is currently only available for the CH565/CH569!");
 
 		if (cmd_debug_mode(0)) {
 			printf("successfully disabled debug mode.\n");
