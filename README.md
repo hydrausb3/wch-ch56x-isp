@@ -1,7 +1,7 @@
-wch-isp
+wch-ch56x-isp
 =======
 
-wch-isp is a small utility to program WCH micro-controllers.
+wch-ch56x-isp is a small utility to program WCH micro-controllers.
 This utility is a rewrite in C of the rust tool [wchisp](https://github.com/ch32-rs/wchisp).
 This utility has only be tested on the CH32V103 & CH569W but should work on other products by WCH.
 
@@ -17,16 +17,16 @@ This utility has only be tested on the CH32V103 & CH569W but should work on othe
 - Install or Reinstall driver for "USB Module" (with USB ID `4348` `55E0`) with `libusb-win32` or `WinUSB`
 - Note: After 10s without any activity the device "USB Module" (with USB ID `4348` `55E0`) will disappear as the bootloader timeout so it shall be restarted
 
-### How to build wch-isp
+### How to build wch-ch56x-isp
 - See the document [How_To_Build.md](How_To_Build.md)
 
-### How to use wch-isp
+### How to use wch-ch56x-isp
 - Start a shell(on GNU/Linux) or execute cmd(on Windows)
-- For usage type wch-isp -h (options -p display progress, -v do verify after write, -r reset board at end, -V print the version) 
+- For usage type wch-ch56x-isp -h (options -p display progress, -v do verify after write, -r reset board at end, -V print the version) 
   - #### GNU/Linux
-    - wch-isp -vr flash fullpath/file.bin
+    - wch-ch56x-isp -vr flash fullpath/file.bin
   - #### Windows
-    - wch-isp.exe -vr flash fullpath/file.bin
+    - wch-ch56x-isp.exe -vr flash fullpath/file.bin
 
 ### CH569 Flash RAMX/ROM size
 With the new version v0.2.0 there is new commands `flash32k`, `flash64k` and `flash96k`
@@ -42,9 +42,9 @@ One of those new commands shall be used only to change the RAMX/ROM(Flash code) 
 Warning: After any change to RAMX/ROM size old binary previously flashed will not run correctly, so it is mandatory to flash the program again with a binary by using `flash` command like in example [`How to use wch-isp`](https://github.com/hydrausb3/wch-isp#how-to-use-wch-isp)
 
 ### CH569 Debug mode
-* If the CH569 config `debug` mode is `on/enabled` it is impossible to flash a program with `wch-isp` and it will return error "Fail to program chunk @ 0 error: e0 00" (the booloader refuse to flash anything when debug mode is `on/enabled`).
-* To check the CH569 config `debug` mode, launch `wch-isp -c` and it will display the config of the CH569 including debug state (`DEBUG_EN` `1: enabled` or `0: disabled`)
-* To disable the `debug` mode, launch `wch-isp debug-off`
+* If the CH569 config `debug` mode is `on/enabled` it is impossible to flash a program with `wch-ch56x-isp` and it will return error "Fail to program chunk @ 0 error: e0 00" (the booloader refuse to flash anything when debug mode is `on/enabled`).
+* To check the CH569 config `debug` mode, launch `wch-ch56x-isp -c` and it will display the config of the CH569 including debug state (`DEBUG_EN` `1: enabled` or `0: disabled`)
+* To disable the `debug` mode, launch `wch-ch56x-isp debug-off`
 
 Example WCH569 config with debug enabled/on:
 ```
