@@ -2,8 +2,8 @@ wch-ch56x-isp
 =======
 
 wch-ch56x-isp is a small utility to program WCH micro-controllers.
-This utility is a rewrite in C of the rust tool [wchisp](https://github.com/ch32-rs/wchisp).
-This utility has only be tested on the CH32V103 & CH569W but should work on other products by WCH.
+This utility is a rewrite in C of the rust tool [wchisp](https://github.com/ch32-rs/wchisp) based on https://github.com/jmaselbas/wch-isp.
+This utility has only be tested on the CH569W & CH565 but should work on any WCH CH56x.
 
 ### MounRiver Studio or MounRiver Studio Community project settings to generate bin file for CH56x...
  - #### Properties of project => C/C++ Build => Settings => Build Steps
