@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only
-VERSION = 0.2.0
+VERSION = 0.2.1
 
 # Install paths
 PREFIX = /usr/local
@@ -15,10 +15,10 @@ CFLAGS = -Wall -O2 `pkg-config --cflags libusb-1.0`
 LDFLAGS = `pkg-config --libs libusb-1.0`
 endif
 
-SRC = wch-isp.c
+SRC = wch-ch56x-isp.c
 HDR = arg.h devices.h
 OBJ = $(SRC:.c=.o)
-BIN = wch-isp
+BIN = wch-ch56x-isp
 DISTFILES = $(SRC) $(HDR) Makefile
 
 all: $(BIN)

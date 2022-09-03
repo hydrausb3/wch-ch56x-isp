@@ -15,6 +15,6 @@ GitHub Workflows / CI Build is available on [Build.yml](.github/workflows/Build.
 - `pacman -Syu`
 - `pacman -S mingw-w64-x86_64-make mingw-w64-x86_64-pkgconf mingw-w64-x86_64-gcc mingw-w64-x86_64-libusb`
 #### Automatic build (using Makefile)
-`ming32-make.exe`
+`mingw32-make.exe clean all`
 - Optional copy libusb-1.0.dll to same directory as the executable(if it is not in your path)
   - `cp /mingw64/bin/libusb-1.0.dll ./`

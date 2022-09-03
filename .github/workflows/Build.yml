@@ -34,7 +34,7 @@ jobs:
         APP_VERSION: "${{steps.id_version.outputs.app_version}}"
       uses: actions/upload-artifact@v2
       with:
-        name: wch-isp-Ubuntu-${{env.APP_VERSION}}
+        name: wch-ch56x-isp-Ubuntu-${{env.APP_VERSION}}
         path: ./
 
   wch-isp_Windows:
@@ -68,5 +68,5 @@ jobs:
         APP_VERSION: "${{steps.id_version.outputs.app_version}}"
       uses: actions/upload-artifact@v2
       with:
-        name: wch-isp-Windows-${{env.APP_VERSION}}
+        name: wch-ch56x-isp-Windows-${{env.APP_VERSION}}
         path: ./
