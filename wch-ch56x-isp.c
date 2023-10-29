@@ -1,6 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0-only */
 /* SPDX-FileCopyrightText: 2022 Jules Maselbas */
-/* SPDX-FileCopyrightText: 2022 Benjamin Vernoux */
+/* SPDX-FileCopyrightText: 2022-2023 Benjamin Vernoux */
 #include <unistd.h>
 #include <stddef.h>
 #include <stdlib.h>
@@ -10,8 +10,7 @@
 #include <errno.h>
 #include <libusb.h>
 
-static void usage(void);
-#include "arg.h"
+#include <cargs.h>
 
 #define __noreturn __attribute__((noreturn))
 
@@ -79,7 +78,6 @@ typedef uint32_t u32;
 
 __noreturn static void die(const char *errstr, ...);
 __noreturn static void version_print(void);
-__noreturn static void usage(void);
 
 static void usb_init(void);
 static void usb_fini(void);
@@ -88,7 +86,7 @@ static size_t usb_recv(size_t len, u8 *buf);
 
 static void isp_init(void);
 static void isp_fini(void);
-static size_t isp_send_cmd(u8 cmd, u16 len, u8 *data);
+static size_t isp_send_cmd(u8 cmd, u16 len, const u8 *data);
 static size_t isp_recv_cmd(u8 cmd, u16 len, u8 *data);
 
 libusb_context *usb = NULL;
@@ -104,6 +102,101 @@ struct timeval curr_tv;
 void *flash_file_bin = NULL;
 FILE *flash_file_fp = NULL;
 
+static u8 dev_id;
+static u8 dev_type;
+static u8 dev_uid[8];
+static u32 dev_btver;
+static size_t dev_uid_len;
+static u8 isp_key[30]; /* all zero key */
+static u8 xor_key[8];
+
+static struct dev *dev_db;
+
+static char *argv0;
+
+/**
+ * This is the main configuration of all options available.
+ */
+static struct cag_option options[] =
+{
+	{
+		.identifier = 'V',
+		.access_letters = "V",
+		.access_name = "Version",
+		.value_name = NULL,
+		.description = "Print version"
+	},
+	{
+		.identifier = 'h',
+		.access_letters = "h",
+		.access_name = "help",
+		.value_name = NULL,
+		.description = "Show help"
+	},
+	{
+		.identifier = 'c',
+		.access_letters = "c",
+		.access_name = "config",
+		.value_name = NULL,
+		.description = "Print CH569 config(after isp_init and before isp_fini)"
+	},
+	{
+		.identifier = 'p',
+		.access_letters = "p",
+		.access_name = "progress",
+		.value_name = NULL,
+		.description = "Display progress"
+	},
+	{
+		.identifier = 'v',
+		.access_letters = "v",
+		.access_name = "verify",
+		.value_name = NULL,
+		.description = "Do verify after erase/program"
+	},
+	{
+		.identifier = 'r',
+		.access_letters = "r",
+		.access_name = "reset",
+		.value_name = NULL,
+		.description = "Reset MCU at end"
+	},
+	{
+		.identifier = 'd',
+		.access_letters = "d",
+		.access_name = "mcudebug",
+		.value_name = "VALUE",
+		.description = "Set MCU debug mode on or off"
+	},
+	{
+		.identifier = 'f',
+		.access_letters = "f",
+		.access_name = "flashfile",
+		.value_name = "VALUE",
+		.description = "Flash file (binary file *.bin)"
+	}
+};
+
+/**
+ * This is a custom project configuration structure where you can store the
+ * parsed information.
+ */
+struct cag_configuration
+{
+	int do_progress;
+	int do_reset;
+	int do_verify;
+	int do_show_config;
+
+	int do_mcu_debug;
+	const char* mcu_debug_mode;
+
+	int do_flash_file;
+	const char* flash_file;
+};
+
+static struct cag_configuration config = { 0 }; /* Default values for the option(s) */
+
 float TimevalDiff(const struct timeval *a, const struct timeval *b)
 {
 	return (a->tv_sec - b->tv_sec) + 1e-6f * (a->tv_usec - b->tv_usec);
@@ -111,7 +204,7 @@ float TimevalDiff(const struct timeval *a, const struct timeval *b)
 
 void get_CurrentTime(char* date_time_ms, int date_time_ms_max_size)
 {
-	#define CURRENT_TIME_SIZE (30)
+#define CURRENT_TIME_SIZE (30)
 	char currentTime[CURRENT_TIME_SIZE+1] = "";
 	time_t rawtime;
 	struct tm * timeinfo;
@@ -140,28 +233,38 @@ void printf_timing(const char *fmt, ...)
 	va_end(args);
 }
 
-void print_hex(uint8_t* data, uint8_t size)
+void print_hex(const uint8_t* data, uint8_t size)
 {
 	uint8_t ascii[17];
 	uint8_t i, j;
 	ascii[16] = '\0';
-	for (i = 0; i < size; ++i) {
+	for (i = 0; i < size; ++i)
+	{
 		printf("%02X ", data[i]);
-		if (data[i] >= 0x20 && data[i] <= 0x7f) {
+		if (data[i] >= 0x20 && data[i] <= 0x7f)
+		{
 			ascii[i % 16] = data[i];
-		} else {
+		}
+		else
+		{
 			ascii[i % 16] = '.';
 		}
-		if ((i+1) % 8 == 0 || i+1 == size) {
+		if ((i+1) % 8 == 0 || i+1 == size)
+		{
 			printf(" ");
-			if ((i+1) % 16 == 0) {
+			if ((i+1) % 16 == 0)
+			{
 				printf("|  %s \r\n", ascii);
-			} else if (i+1 == size) {
+			}
+			else if (i+1 == size)
+			{
 				ascii[(i+1) % 16] = '\0';
-				if ((i+1) % 16 <= 8) {
+				if ((i+1) % 16 <= 8)
+				{
 					printf(" ");
 				}
-				for (j = (i+1) % 16; j < 16; ++j) {
+				for (j = (i+1) % 16; j < 16; ++j)
+				{
 					printf("   ");
 				}
 				printf("|  %s \r\n", ascii);
@@ -208,7 +311,7 @@ usb_recv(size_t len, u8 *buf)
 }
 
 static size_t
-isp_send_cmd(u8 cmd, u16 len, u8 *data)
+isp_send_cmd(u8 cmd, u16 len, const u8 *data)
 {
 	u8 buf[64];
 
@@ -296,7 +399,7 @@ cmd_identify(u8 *dev_id, u8 *dev_type)
 }
 
 static void
-cmd_isp_key(size_t len, u8 *key, u8 *sum)
+cmd_isp_key(size_t len, const u8 *key, u8 *sum)
 {
 	u8 rsp[2];
 
@@ -322,10 +425,12 @@ cmd_isp_end(u8 reason)
 	printf("cmd_isp_end isp_send_cmd()/isp_recv_cmd()\n");
 #endif
 
+	printf_timing("Reset MCU start\n");
 	isp_send_cmd(CMD_ISP_END, sizeof(reason), &reason);
 	if (reason == 0) /* the device is not expected to respond */
 		isp_recv_cmd(CMD_ISP_END, sizeof(buf), buf);
 
+	printf_timing("Reset MCU end\n");
 #ifdef DEBUG
 	printf("\n");
 #endif
@@ -454,11 +559,29 @@ u8 cmd_debug_mode(u8 enable)
 	return buf[4] == 0; // success if this byte is zero
 }
 
-u8 cmd_set_flash_size(u8 flash_size_kb)
+u8 cmd_set_flash_size(size_t flash_file_size_bytes)
 {
 	u8 req[] = { 0x1f, 0x00 };
 	u8 buf[60];
 	size_t got;
+	u8 flash_size_config_kb;
+
+	if (flash_file_size_bytes < SZ_32K)
+	{
+		flash_size_config_kb = 32;
+	}
+	else if (flash_file_size_bytes < SZ_64K)
+	{
+		flash_size_config_kb = 64;
+	}
+	else if (flash_file_size_bytes < SZ_96K)
+	{
+		flash_size_config_kb = 96;
+	}
+	else
+	{
+		die("invalid flash file size only < 96k are supported\n");
+	}
 
 	isp_send_cmd(CMD_READ_CONFIG, sizeof(req), req);
 	got = isp_recv_cmd(CMD_READ_CONFIG, sizeof(buf), buf);
@@ -466,18 +589,30 @@ u8 cmd_set_flash_size(u8 flash_size_kb)
 		die("read conf fail: not received enough bytes\n");
 
 	u8 flash_size_config = 0x0f;
-	switch (flash_size_kb)
+	switch (flash_size_config_kb)
 	{
-		case 32: flash_size_config = 0xcf; break;
-		case 64: flash_size_config = 0x4f; break;
-		case 96: flash_size_config = 0x0f; break;
+		case 32:
+			flash_size_config = 0xcf;
+			break;
+		case 64:
+			flash_size_config = 0x4f;
+			break;
+		case 96:
+			flash_size_config = 0x0f;
+			break;
 		default:
 			break;
 	}
+	/* If flash size config already set avoid to set it again */
+	if(flash_size_config == buf[13])
+	{
+		printf_timing("flash size already set to %d KB\n", flash_size_config_kb);
+		return 1;
+	}
 
+	printf_timing("flash size set to %d KB\n", flash_size_config_kb);
 	buf[13] = flash_size_config;
-
-	got = isp_send_cmd(CMD_WRITE_CONFIG, 14, buf);
+	isp_send_cmd(CMD_WRITE_CONFIG, 14, buf);
 	got = usb_recv(6, buf);
 	if (got != 6)
 		die("send config command: wrong response length\n");
@@ -513,8 +648,7 @@ usb_init(void)
 
 	dev = libusb_open_device_with_vid_pid(usb, ISP_VID, ISP_PID);
 	if (!dev)
-		die("Fail to open device %4x:%4x %s\n", ISP_VID, ISP_PID,
-		    strerror(errno));
+		die("Fail to open device %4x:%4x\n", ISP_VID, ISP_PID);
 #ifdef __linux__
 	kernel = libusb_kernel_driver_active(dev, 0);
 	if (kernel == 1)
@@ -549,21 +683,6 @@ usb_fini(void)
 	if (usb)
 		libusb_exit(usb);
 }
-
-static u8 dev_id;
-static u8 dev_type;
-static u8 dev_uid[8];
-static u32 dev_btver;
-static size_t dev_uid_len;
-static u8 isp_key[30]; /* all zero key */
-static u8 xor_key[8];
-
-static struct dev *dev_db;
-
-static int do_progress;
-static int do_reset;
-static int do_verify;
-static int do_show_config;
 
 static size_t
 db_flash_size(void)
@@ -603,8 +722,10 @@ isp_init(void)
 	if (dev_db)
 	{
 		printf_timing("Found chip: %s [0x%.2x%.2x] Flash %dK\n", dev_db->name,
-		       dev_type, dev_id, dev_db->flash_size / SZ_1K);
-	} else {
+					  dev_type, dev_id, dev_db->flash_size / SZ_1K);
+	}
+	else
+	{
 		printf_timing("Unknown chip: [0x%.2x%.2x]", dev_type, dev_id);
 	}
 
@@ -618,9 +739,9 @@ isp_init(void)
 	/* get the bootloader version */
 	dev_btver = read_btver();
 	printf_timing("bootloader: v%d%d.%d%d (0x%08X)\n",
-		dev_btver >> 24, ((dev_btver & 0x00FF0000) >> 16),
-		((dev_btver & 0x0000FF00) >> 8), dev_btver & 0xFF,
-		dev_btver);
+				  dev_btver >> 24, ((dev_btver & 0x00FF0000) >> 16),
+				  ((dev_btver & 0x0000FF00) >> 8), dev_btver & 0xFF,
+				  dev_btver);
 
 	/* initialize xor_key */
 	for (sum = 0, i = 0; i < dev_uid_len; i++)
@@ -631,10 +752,13 @@ isp_init(void)
 	/* send the isp key */
 	cmd_isp_key(sizeof(isp_key), isp_key, &rsp);
 
-	if (dev_btver >= BTVER_2_7) {
+	if (dev_btver >= BTVER_2_7)
+	{
 		/* bootloader version 2.7 (and maybe onward) simply send zero */
 		sum = 0;
-	} else {
+	}
+	else
+	{
 		/* bootloader version 2.6 (and maybe prior versions) send back
 		 * the a checksum of the xor_key. This response can be used to
 		 * make sure we are in sync. */
@@ -653,7 +777,7 @@ progress_bar(const char *act, size_t current, size_t total)
 	int l = strlen(f);
 	int n = (current * l) / total;
 
-	if (!do_progress)
+	if (!config.do_progress)
 		return;
 	printf_timing("\r[%.*s%.*s] %s %lld/%lld", n, f, l - n, e, act, current, total);
 	if (current == total)
@@ -662,7 +786,7 @@ progress_bar(const char *act, size_t current, size_t total)
 }
 
 static void
-isp_flash(size_t size, u8 *data)
+isp_flash(size_t size, const u8 *data)
 {
 	size_t sector_size = db_flash_sector_size();
 	u32 nr_sectors = ALIGN(size, sector_size) / sector_size;
@@ -678,7 +802,8 @@ isp_flash(size_t size, u8 *data)
 	printf_timing("cmd_erase end\n");
 
 	printf_timing("cmd_program start\n");
-	while (off < size) {
+	while (off < size)
+	{
 		progress_bar("write", off, size);
 
 		len = cmd_program(off, rem, data + off, xor_key);
@@ -692,14 +817,15 @@ isp_flash(size_t size, u8 *data)
 }
 
 static void
-isp_verify(size_t size, u8 *data)
+isp_verify(size_t size, const u8 *data)
 {
 	size_t off = 0;
 	size_t rem = size;
 	size_t len;
 
 	printf_timing("isp_verify start\n");
-	while (off < size) {
+	while (off < size)
+	{
 		progress_bar("verify", off, size);
 
 		len = cmd_verify(off, rem, data + off, xor_key);
@@ -713,18 +839,35 @@ isp_verify(size_t size, u8 *data)
 static void
 isp_fini(void)
 {
-	if (do_reset)
+	if (config.do_reset)
 		cmd_isp_end(1);
 }
 
 static size_t
 f_size(FILE *fp)
 {
-    size_t prev=ftell(fp);
-    fseek(fp, 0L, SEEK_END);
-    size_t sz=ftell(fp);
-    fseek(fp,prev,SEEK_SET); //go back to where we were
-    return sz;
+	size_t prev=ftell(fp);
+	fseek(fp, 0L, SEEK_END);
+	size_t sz=ftell(fp);
+	fseek(fp,prev,SEEK_SET); //go back to where we were
+	return sz;
+}
+
+static size_t
+flash_file_size(const char *name)
+{
+	size_t size;
+
+	flash_file_fp = fopen(name, "rb");
+	if (flash_file_fp == NULL)
+		die("%s: %s\n", name, strerror(errno));
+
+	size = f_size(flash_file_fp);
+
+	fclose(flash_file_fp);
+	flash_file_fp = NULL;
+
+	return size;
 }
 
 static void
@@ -758,70 +901,46 @@ flash_file(const char *name)
 	printf_timing("Flash file: %s\n", name);
 	printf_timing("File length: %lld (size aligned: %lld)\n", size, size_align);
 	isp_flash(size_align, flash_file_bin);
-	if (do_verify)
+	if (config.do_verify)
 		isp_verify(size_align, flash_file_bin);
 
 	/* Note flash_file_fp & flash_file_bin handles are closed/freed by usb_fini() */
 }
 
-char *argv0;
-
 static void
-ch569_print_config(size_t len, u8 *cfg)
+ch569_print_config(const char* message, size_t len, const u8 *cfg)
 {
 	u32 nv;
 
 	if (len < 12)
 		return;
-	/*
-	printf("cfg(Hex)=");
-	for(int i = 0; i < 12; i++)
-		printf("%02X ", cfg[i]);
-	printf("\n");
-	*/
+
 	nv = (cfg[8] << 0) | (cfg[9] << 8) | (cfg[10] << 16) | (cfg[11] << 24);
-	printf("nv=0x%08X\n", nv);
+	printf("%s nv=0x%08X\n", message, nv);
 	printf("[4] RESET_EN %d: %s\n", !!(nv & BIT(4)),
-	       (nv & BIT(4)) ? "enabled" : "disabled");
+		   (nv & BIT(4)) ? "enabled" : "disabled");
 	printf("[5] DEBUG_EN %d: %s\n", !!(nv & BIT(5)),
-	       (nv & BIT(5)) ? "enabled" : "disabled");
+		   (nv & BIT(5)) ? "enabled" : "disabled");
 	printf("[6] BOOT_EN %d: %s\n", !!(nv & BIT(6)),
-	       (nv & BIT(6)) ? "enabled" : "disabled");
+		   (nv & BIT(6)) ? "enabled" : "disabled");
 	printf("[7] CODE_READ_EN %d: %s\n", !!(nv & BIT(7)),
-	       (nv & BIT(7)) ? "enabled" : "disabled");
+		   (nv & BIT(7)) ? "enabled" : "disabled");
 	printf("[29] LOCKUP_RST_EN %d: %s\n", !!(nv & BIT(29)),
-	       (nv & BIT(29)) ? "enabled" : "disabled");
+		   (nv & BIT(29)) ? "enabled" : "disabled");
 	printf("[31:30] USER_MEM 0x%02X: %s\n", (nv >> 30) & 0b11,
-	       ((nv >> 30) & 0b11) == 0 ? "RAMX 32KB + ROM 96KB" :
-	       ((nv >> 30) & 0b11) == 1 ? "RAMX 64KB + ROM 64KB" :
-	       "RAMX 96KB + ROM 32KB");
+		   ((nv >> 30) & 0b11) == 0 ? "RAMX 32KB + ROM 96KB" :
+		   ((nv >> 30) & 0b11) == 1 ? "RAMX 64KB + ROM 64KB" :
+		   "RAMX 96KB + ROM 32KB");
 }
 
 static void
-config_show(void)
+config_show(const char* message)
 {
 	u8 cfg[16];
 	size_t len;
 
 	len = cmd_read_conf(0x7, sizeof(cfg), cfg);
-	ch569_print_config(len, cfg);
-/*
-	for (int i = 0; i < len; i++)
-		printf("%.2x%c", cfg[i], ((i % 4) == 3) ? '\n' : ' ');
-*/
-}
-
-static void
-usage(void)
-{
-	printf("usage: %s [-Vprvc] COMMAND [ARG ...]\n", argv0);
-	printf("       %s [-Vprvc] flash|debug-on|debug-off|flash32k|flash64k|flash96k FILE\n", argv0);
-	printf("-V means print version\n");
-	printf("-p means display progress\n");
-	printf("-r means do reset at end\n");
-	printf("-v means do verify after erase/program\n");
-	printf("-c means print CH569 config(after isp_init and before isp_fini)\n");
-	die("");
+	ch569_print_config(message, len, cfg);
 }
 
 static void
@@ -834,26 +953,45 @@ version_print(void)
 int
 main(int argc, char *argv[])
 {
-	argv0 = argv[0];
+	char identifier;
+	cag_option_context context;
 
-	ARGBEGIN {
-	case 'p':
-		do_progress = 1;
-		break;
-	case 'r':
-		do_reset = 1;
-		break;
-	case 'v':
-		do_verify = 1;
-		break;
-	case 'c':
-		do_show_config = 1;
-		break;
-	case 'V':
-		version_print();
-	default:
-		usage();
-	} ARGEND;
+	argv0 = argv[0];
+	/* Prepare the context and iterate over all options */
+	cag_option_prepare(&context, options, CAG_ARRAY_SIZE(options), argc, argv);
+	while (cag_option_fetch(&context))
+	{
+		identifier = cag_option_get(&context);
+		switch (identifier)
+		{
+			case 'V':
+				version_print();
+			case 'h':
+				printf("Usage: wch-ch56x-isp [OPTION]...\n");
+				cag_option_print(options, CAG_ARRAY_SIZE(options), stdout);
+				return EXIT_SUCCESS;
+			case 'p':
+				config.do_progress = 1;
+				break;
+			case 'r':
+				config.do_reset = 1;
+				break;
+			case 'v':
+				config.do_verify = 1;
+				break;
+			case 'c':
+				config.do_show_config = 1;
+				break;
+			case 'd':
+				config.do_mcu_debug = 1;
+				config.mcu_debug_mode = cag_option_get_value(&context);
+				break;
+			case 'f':
+				config.do_flash_file = 1;
+				config.flash_file = cag_option_get_value(&context);
+				break;
+		}
+	}
 
 	printf("%s v%s\n", argv0, VERSION);
 	gettimeofday(&start_tv, NULL);
@@ -862,53 +1000,64 @@ main(int argc, char *argv[])
 	usb_init();
 	isp_init();
 
-	if (do_show_config)
-		config_show();
+	if (config.do_show_config)
+		config_show("config after isp_init()");
 
 	if (argc < 1)
 		die("missing command\n");
 
-	if (strcmp(argv[0], "flash") == 0) {
-		if (argc < 2)
-			die("flash: missing file\n");
-		flash_file(argv[1]);
-	} else if (strcmp(argv[0], "debug-on") == 0) {
+	if(config.do_mcu_debug)
+	{
+		if(config.mcu_debug_mode == NULL)
+			die("Invalid debug mode option (only on or off are supported)\n");
+
 		if (!((dev_id == 0x69) || (dev_id == 0x65)))
-			die("This feature is currently only available for the CH565/CH569!");
+			die("MCU debug mode feature is currently only available for the CH565/569!");
 
-		if (cmd_debug_mode(1)) {
-			printf("successfully enabled debug mode.\n");
-		} else {
-			printf("failed to enable debug mode.\n");
+		if(strcmp(config.mcu_debug_mode, "on") == 0)
+		{
+			if (cmd_debug_mode(1))
+			{
+				printf_timing("successfully enabled MCU debug mode\n");
+			}
+			else
+			{
+				printf_timing("failed to enable MCU debug mode\n");
+			}
 		}
-	} else if (strcmp(argv[0], "debug-off") == 0) {
-		if (!((dev_id == 0x69) || (dev_id == 0x65)))
-			die("This feature is currently only available for the CH565/CH569!");
-
-		if (cmd_debug_mode(0)) {
-			printf("successfully disabled debug mode.\n");
-		} else {
-			printf("failed to disable debug mode.\n");
+		else if(strcmp(config.mcu_debug_mode, "off") == 0)
+		{
+			if (cmd_debug_mode(0))
+			{
+				printf_timing("successfully disabled MCU debug mode\n");
+			}
+			else
+			{
+				printf_timing("failed to disable MCU debug mode\n");
+			}
 		}
-	} else if (strncmp(argv[0], "flash", 5) == 0) {
-		if (dev_id != 0x69)
-			die("This feature is currently only available for the CH569!");
-
-		u8 flash_size_kb = 32;
-		if (strcmp(argv[0], "flash32k") == 0) flash_size_kb = 32;
-		else if (strcmp(argv[0], "flash64k") == 0) flash_size_kb = 64;
-		else if (strcmp(argv[0], "flash96k") == 0) flash_size_kb = 96;
-		else die("invalid flash size (only 32k, 64k, and 96k are supported).");
-
-		if (cmd_set_flash_size(flash_size_kb)) {
-			printf("successfully set flash size.\n");
-		} else {
-			printf("failed to set flash size.\n");
+		else
+		{
+			die("Invalid debug mode option (only on or off are supported)\n");
 		}
 	}
 
-	if (do_show_config)
-		config_show();
+	if(config.do_flash_file)
+	{
+		size_t flash_file_size_bytes;
+		flash_file_size_bytes = flash_file_size(config.flash_file);
+		if (cmd_set_flash_size(flash_file_size_bytes))
+		{
+			flash_file(config.flash_file);
+		}
+		else
+		{
+			printf_timing("failed to set flash size\n");
+		}
+	}
+
+	if (config.do_show_config)
+		config_show("config before isp_fini()");
 
 	isp_fini();
 	usb_fini();

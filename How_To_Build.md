@@ -2,6 +2,12 @@
 
 GitHub Workflows / CI Build is available on [Build.yml](.github/workflows/Build.yml)
 
+### Clone wch-ch56x-isp repository with git
+```
+cd ~
+git clone --recursive https://github.com/hydrausb3/wch-ch56x-isp.git
+```
+
 ###  GNU/Linux Ubuntu 20.04 LTS
 #### Prerequisites
 `sudo apt-get install gcc pkg-config libusb-1.0-0-dev`

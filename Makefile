@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only
-VERSION = 0.2.1
+VERSION = 0.3.0
 
 # Install paths
 PREFIX = /usr/local
@@ -8,22 +8,25 @@ PREFIX = /usr/local
 CPPFLAGS = -DVERSION=\"$(VERSION)\"
 
 ifeq ($(OS), Windows_NT)
-CFLAGS = -Wall -O2 `pkg-config --cflags libusb-1.0`
+CFLAGS = -Wall -O2 `pkg-config --cflags libusb-1.0` $(INCLUDES)
 LDFLAGS = -L/mingw64/lib -I/mingw64/include/libusb-1.0 -lusb-1.0
 else
-CFLAGS = -Wall -O2 `pkg-config --cflags libusb-1.0`
+CFLAGS = -Wall -O2 `pkg-config --cflags libusb-1.0` $(INCLUDES)
 LDFLAGS = `pkg-config --libs libusb-1.0`
 endif
 
-SRC = wch-ch56x-isp.c
-HDR = arg.h devices.h
+SRC = wch-ch56x-isp.c ./cargs/src/cargs.c
+HDR = ./cargs/include/cargs.h devices.h
 OBJ = $(SRC:.c=.o)
 BIN = wch-ch56x-isp
 DISTFILES = $(SRC) $(HDR) Makefile
 
+INCLUDES = \
+  -I"./cargs/include"
+
 all: $(BIN)
 
-$(OBJ): arg.h devices.h
+$(OBJ): ./cargs/include/cargs.h devices.h
 
 $(BIN): $(OBJ)
 	$(CC) -o $@ $^ $(LDFLAGS)
