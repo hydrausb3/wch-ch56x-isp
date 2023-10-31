@@ -357,7 +357,7 @@ isp_recv_cmd(u8 cmd, u16 len, u8 *data)
 	got -= 4;
 	hdrlen = buf[2] | (buf[3] << 8);
 	if (hdrlen != got)
-		die("isp_recv_cmd: length mismatch, got %#.x (hdr %#.x)\n", got, hdrlen);
+		die("isp_recv_cmd: length mismatch, got %zu (hdr %u)\n", got, hdrlen);
 	len = MIN(len, got);
 
 	if (data != NULL)
@@ -884,7 +884,7 @@ flash_file(const char *name)
 	size = f_size(flash_file_fp);
 	size_align = ALIGN(size, 64);
 	if (size_align > db_flash_size())
-		die("%s: file too big, flash size is %d", name, db_flash_size());
+		die("%s: file too big, flash size is %zu", name, db_flash_size());
 
 	flash_file_bin = malloc(size_align);
 	if (flash_file_bin == NULL)
