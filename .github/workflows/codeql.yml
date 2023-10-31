@@ -17,8 +17,9 @@ jobs:
         # https://docs.github.com/en/github/finding-security-vulnerabilities-and-errors-in-your-code/configuring-code-scanning#overriding-automatic-language-detection
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
 
     - name: Install pkg-config libusb-1.0-0-dev
       run: sudo apt-get install pkg-config libusb-1.0-0-dev
