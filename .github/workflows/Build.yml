@@ -55,12 +55,10 @@ jobs:
 
     - name: Get build timestamp
       id: id_date
-      shell: bash
       run: echo "timestamp=$(date +%Y-%m-%d-%H-%M-%S)" >> $GITHUB_OUTPUT
 
     - name: Get app version + timestamp
       id: id_version
-      shell: bash
       run: |
        app_major_minor_patch=`grep -oP '(?<=VERSION = )[0-9.]+' Makefile`
        echo "app_version=$app_major_minor_patch-${{steps.id_date.outputs.timestamp}}" >> $GITHUB_OUTPUT
