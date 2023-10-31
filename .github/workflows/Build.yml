@@ -10,11 +10,9 @@ jobs:
     runs-on: ubuntu-20.04
     steps:
     - uses: actions/checkout@v3
-    - name: Checkout submodules
-      run: |
-          git submodule update --init --recursive
-          git fetch --prune --unshallow
-            
+      with:
+        submodules: recursive
+
     - name: Install pkg-config libusb-1.0-0-dev
       run: sudo apt-get install pkg-config libusb-1.0-0-dev
 
@@ -48,10 +46,8 @@ jobs:
         shell: msys2 {0}
     steps:
     - uses: actions/checkout@v3
-    - name: Checkout submodules
-      run: |
-          git submodule update --init --recursive
-          git fetch --prune --unshallow
+      with:
+        submodules: recursive
     - uses: msys2/setup-msys2@v2
       with:
           msystem: MINGW64
