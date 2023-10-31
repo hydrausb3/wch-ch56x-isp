@@ -26,7 +26,7 @@ jobs:
       shell: bash
       run: |
        app_major_minor_patch=`grep -oP '(?<=VERSION = )[0-9.]+' Makefile`
-       echo "app_version=$app_major_minor_patch-${{steps.id_date.outputs.timestamp}}" >> $GITHUB_OUTPUT
+       echo "app_version=v$app_major_minor_patch-${{steps.id_date.outputs.timestamp}}" >> $GITHUB_OUTPUT
 
     - name: Build app
       shell: bash
@@ -61,7 +61,7 @@ jobs:
       id: id_version
       run: |
        app_major_minor_patch=`grep -oP '(?<=VERSION = )[0-9.]+' Makefile`
-       echo "app_version=$app_major_minor_patch-${{steps.id_date.outputs.timestamp}}" >> $GITHUB_OUTPUT
+       echo "app_version=v$app_major_minor_patch-${{steps.id_date.outputs.timestamp}}" >> $GITHUB_OUTPUT
 
     - name: Build app
       run: |
