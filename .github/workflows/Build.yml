@@ -19,14 +19,14 @@ jobs:
     - name: Get build timestamp
       id: id_date
       shell: bash
-      run: echo "::set-output name=timestamp::$(date +%Y-%m-%d-%H-%M-%S)"
+      run: echo "timestamp=$(date +%Y-%m-%d-%H-%M-%S)" >> $GITHUB_STATE
 
     - name: Get app version
       id: id_version
       shell: bash
       run: |
          app_major_minor_patch=`grep -oP '(?<=VERSION = )[0-9.]+' Makefile`
-         echo "::set-output name=app_version::v$app_major_minor_patch-${{steps.id_date.outputs.timestamp}}"
+         echo "app_version=v$app_major_minor_patch-${{steps.id_date.outputs.timestamp}}" >> $GITHUB_OUTPUT
     - name: Build app
       shell: bash
       run: |
@@ -34,7 +34,7 @@ jobs:
     - name: Upload artifact
       env: 
         APP_VERSION: "${{steps.id_version.outputs.app_version}}"
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: wch-ch56x-isp-Ubuntu-${{env.APP_VERSION}}
         path: ./
@@ -56,13 +56,13 @@ jobs:
 
     - name: Get build timestamp
       id: id_date
-      run: echo "::set-output name=timestamp::$(date +%Y-%m-%d-%H-%M-%S)"
+      run: echo "timestamp=$(date +%Y-%m-%d-%H-%M-%S)" >> $GITHUB_STATE
 
     - name: Get app version
       id: id_version     
       run: |
          app_major_minor_patch=`grep -oP '(?<=VERSION = )[0-9.]+' Makefile`
-         echo "::set-output name=app_version::v$app_major_minor_patch-${{steps.id_date.outputs.timestamp}}"
+         echo "app_version=v$app_major_minor_patch-${{steps.id_date.outputs.timestamp}}" >> $GITHUB_OUTPUT
     - name: Build app
       run: |
          mingw32-make
@@ -70,7 +70,7 @@ jobs:
     - name: Upload artifact
       env: 
         APP_VERSION: "${{steps.id_version.outputs.app_version}}"
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: wch-ch56x-isp-Windows-${{env.APP_VERSION}}
         path: ./
