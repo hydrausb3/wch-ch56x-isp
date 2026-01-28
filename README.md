@@ -34,6 +34,7 @@ Usage: wch-ch56x-isp [OPTION]...
   -p, --progress            Display progress
   -v, --verify              Do verify after erase/program
   -r, --reset               Reset MCU at end
+  -b, --altbootpin=VALUE    Set alt boot pin on(PA13) or off(PA5), will INVALID the image inside
   -d, --mcudebug=VALUE      Set MCU debug mode on or off
   -f, --flashfile=VALUE     Flash file (binary file *.bin)
 ```

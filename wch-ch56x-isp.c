@@ -162,6 +162,13 @@ static struct cag_option options[] =
 		.description = "Reset MCU at end"
 	},
 	{
+		.identifier = 'b',
+		.access_letters = "b",
+		.access_name = "altbootpin",
+		.value_name = "VALUE",
+		.description = "Set alt boot pin on(PA13) or off(PA5), will INVALID the image inside"
+	},
+	{
 		.identifier = 'd',
 		.access_letters = "d",
 		.access_name = "mcudebug",
@@ -187,6 +194,9 @@ struct cag_configuration
 	int do_reset;
 	int do_verify;
 	int do_show_config;
+
+	int do_alt_boot_pin;
+	const char* alt_boot_pin;
 
 	int do_mcu_debug;
 	const char* mcu_debug_mode;
@@ -529,9 +539,39 @@ cmd_read_conf(u16 cfgmask, size_t len, u8 *cfg)
 	return len;
 }
 
+u8 cmd_alt_boot_pin(u8 enable)
+{
+	u8 req[] = { CFG_MASK_ALL, 0x00 };
+
+	u8 buf[60];
+	size_t got;
+
+#ifdef DEBUG
+	printf("cmd_enable_alt_boot_pin isp_send_cmd()\n");
+#endif
+	isp_send_cmd(CMD_READ_CONFIG, sizeof(req), req);
+	got = isp_recv_cmd(CMD_READ_CONFIG, sizeof(buf), buf);
+	if (got < 2)
+		die("read conf fail: not received enough bytes\n");
+
+	buf[0] = CFG_MASK_RDPR_USER_DATA_WPR;
+	buf[6] = enable ? 0xf0 : 0xf2;
+	buf[9] = enable ? 0x0f : 0x0d;
+
+	isp_send_cmd(CMD_WRITE_CONFIG, 14, buf);
+	got = usb_recv(6, buf);
+	if (got != 6)
+		die("send config command: wrong response length\n");
+
+#ifdef DEBUG
+	print_hex(buf, 6);
+#endif
+	return buf[4] == 0; // success if this byte is zero
+}
+
 u8 cmd_debug_mode(u8 enable)
 {
-	u8 req[] = { 0x1f, 0x00 };
+	u8 req[] = { CFG_MASK_ALL, 0x00 };
 	const u8 enable_debug_req  = 0xe5;
 	const u8 disable_debug_req = 0x45;
 
@@ -561,7 +601,7 @@ u8 cmd_debug_mode(u8 enable)
 
 u8 cmd_set_flash_size(size_t flash_file_size_bytes)
 {
-	u8 req[] = { 0x1f, 0x00 };
+	u8 req[] = { CFG_MASK_ALL, 0x00 };
 	u8 buf[60];
 	size_t got;
 	u8 flash_size_config_kb;
@@ -911,9 +951,13 @@ static void
 ch569_print_config(const char* message, size_t len, const u8 *cfg)
 {
 	u32 nv;
+	u32 alt_boot_pin;
 
 	if (len < 12)
 		return;
+
+	alt_boot_pin = !!(((~cfg[4]) & cfg[7]) & BIT(1));
+	printf("alt boot pin: %s\n", (char*[]){"PA5","PA13"}[alt_boot_pin]);
 
 	nv = (cfg[8] << 0) | (cfg[9] << 8) | (cfg[10] << 16) | (cfg[11] << 24);
 	printf("%s nv=0x%08X\n", message, nv);
@@ -982,6 +1026,10 @@ main(int argc, char *argv[])
 			case 'c':
 				config.do_show_config = 1;
 				break;
+			case 'b':
+				config.do_alt_boot_pin = 1;
+				config.alt_boot_pin = cag_option_get_value(&context);
+				break;
 			case 'd':
 				config.do_mcu_debug = 1;
 				config.mcu_debug_mode = cag_option_get_value(&context);
@@ -1005,6 +1053,42 @@ main(int argc, char *argv[])
 
 	if (argc < 1)
 		die("missing command\n");
+
+	if(config.do_alt_boot_pin)
+	{
+		if(config.alt_boot_pin == NULL)
+			die("Invalid alt boot bin option (only on or off are supported)\n");
+
+		if (!((dev_id == 0x69) || (dev_id == 0x65)))
+			die("alt boot bin feature is currently only available for the CH565/569!");
+
+		if(strcmp(config.alt_boot_pin, "on") == 0)
+		{
+			if (cmd_alt_boot_pin(1))
+			{
+				printf_timing("successfully enabled alt boot bin\n");
+			}
+			else
+			{
+				printf_timing("failed to enable alt boot bin\n");
+			}
+		}
+		else if(strcmp(config.alt_boot_pin, "off") == 0)
+		{
+			if (cmd_alt_boot_pin(0))
+			{
+				printf_timing("successfully disabled alt boot bin\n");
+			}
+			else
+			{
+				printf_timing("failed to disable alt boot bin\n");
+			}
+		}
+		else
+		{
+			die("Invalid alt boot bin option (only on or off are supported)\n");
+		}
+	}
 
 	if(config.do_mcu_debug)
 	{
